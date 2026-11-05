@@ -16,6 +16,7 @@ const CACHE_PREFIX = "pdf-text:";
 const CACHE_MAX_CHARS = 500_000;
 const SCAN_PAUSE_MS = 300;
 const PAGE_SIZE = 100;
+const EXPORT_PAGE_SIZE = 1000;
 
 export const MIN_VALUE_LENGTH = 3;
 export const MAX_PDF_BYTES = 100 * 1024 * 1024;
@@ -24,11 +25,36 @@ export const CONFIRM_ABOVE_BYTES = 200 * 1024 * 1024;
 
 /* ---------- Pure helpers ---------- */
 
-export function virtualObjectId(pset, property, value, valueType = "str") {
-  const key = `ifcelement~${pset}~${property}~${valueType}~${value}`;
+function base64Utf8(text) {
   let binary = "";
-  for (const byte of new TextEncoder().encode(key)) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  for (const byte of new TextEncoder().encode(text)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+export function virtualObjectId(pset, property, value, valueType = "str") {
+  return base64Utf8(`ifcelement~${pset}~${property}~${valueType}~${value}`)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+/** Sorts FO2 before FO10. */
+export function naturalCompare(a, b) {
+  return String(a).localeCompare(String(b), "sv", { numeric: true, sensitivity: "base" });
+}
+
+/** Value first, then PDFs with the value in the filename, then by filename. */
+export function sortHits(hits) {
+  return [...hits].sort(
+    (a, b) =>
+      naturalCompare(a.value, b.value) ||
+      Number(filenameHasValue(b)) - Number(filenameHasValue(a)) ||
+      naturalCompare(a.doc.filename, b.doc.filename),
+  );
+}
+
+export function filenameHasValue(hit) {
+  return tokenPattern(hit.value).test(hit.doc.filename.normalize("NFC"));
 }
 
 /**
@@ -281,6 +307,19 @@ function mockBackend() {
     async objectRecord() {
       return null;
     },
+    async listKinds() {
+      const counts = {};
+      for (const object of objects) counts[object.type] = (counts[object.type] || 0) + 1;
+      return counts;
+    },
+    async valuesForKind(parameter, kind) {
+      const counts = {};
+      for (const object of objects) {
+        const value = object.type === kind ? object.props[parameter.key] : null;
+        if (value != null) counts[value] = (counts[value] || 0) + 1;
+      }
+      return counts;
+    },
     async valuesFor(parameter) {
       const counts = {};
       for (const object of objects) {
@@ -381,6 +420,47 @@ function liveBackend(api) {
       const { base, buildingId } = await context();
       const { data } = await request(`${base}/v2/ifc-objects/${encodeURIComponent(guid)}?building=${buildingId}`);
       return data.attributes;
+    },
+    async listKinds() {
+      return api.valuesForObjectProperty("@kind");
+    },
+    /**
+     * Value counts among the objects of one kind: one search, then one count. NOT VERIFIED LIVE.
+     * The docs list POST octtree/colorcode with a searchId. If that fails, or its total is more
+     * than the kind has objects (so the search was ignored), read the search's rows instead.
+     */
+    async valuesForKind(parameter, kind, kindCount) {
+      const { base, buildingId } = await context();
+      const { searchId } = await request(`${base}/ifc-searches`, {
+        method: "POST",
+        contentType: "application/json",
+        body: { rules: [[{ buildingId, propKey: "@kind", propValue: kind }]] },
+      });
+      try {
+        const body = await request(`${base}/octtree/colorcode`, {
+          method: "POST",
+          accept: "application/json",
+          contentType: "application/json",
+          body: { buildingId, propKey: parameter.property, psetName: parameter.pset, searchId },
+        });
+        const total = Object.values(body.count || {}).reduce((sum, count) => sum + count, 0);
+        if (body.count && total <= kindCount) return body.count;
+      } catch (error) {
+        console.warn("colorcode failed, reading search rows", error);
+      }
+      const field = `${parameter.pset}~${parameter.property}`;
+      const counts = {};
+      for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
+        const { data } = await request(
+          `${base}/ifc-searches/export/json?searchId=${searchId}&fieldUnion=true&fieldNames=${encodeURIComponent(base64Utf8(field))}&page[limit]=${EXPORT_PAGE_SIZE}&page[skip]=${skip}`,
+          { accept: "application/json" },
+        );
+        for (const row of data) {
+          const value = row[field];
+          if (value != null && String(value).trim()) counts[value] = (counts[value] || 0) + 1;
+        }
+        if (data.length < EXPORT_PAGE_SIZE) return counts;
+      }
     },
     async valuesFor(parameter) {
       return api.valuesForObjectProperty(parameter.key);

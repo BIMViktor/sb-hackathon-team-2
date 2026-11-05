@@ -7,14 +7,17 @@ import { objects } from "./mock-data.js";
 import {
   createLinkBackend,
   describeInfoShape,
+  filenameHasValue,
   formatBytes,
   isLinkableValue,
   MAX_PDF_BYTES,
   messageOf,
+  naturalCompare,
   parametersFromInfo,
   saveLink,
   scanDocuments,
   scanNeedsConfirmation,
+  sortHits,
 } from "./pdf-links.js";
 import { connectWidget } from "./streambim.js";
 import "./style.css";
@@ -38,6 +41,15 @@ const parameterHintEl = $("#parameter-hint");
 const parameterListEl = $("#parameter-list");
 const valuesSummaryEl = $("#values-summary");
 const pdfStepEl = $("#pdf-step");
+const scopeOneEl = $("#scope-one");
+const scopeOneLabelEl = $("#scope-one-label");
+const scopeKindEl = $("#scope-kind");
+const kindEl = $("#kind");
+const scopeAllEl = $("#scope-all");
+const scopeAllLabelEl = $("#scope-all-label");
+const valueChoiceEl = $("#value-choice");
+const valueSummaryEl = $("#value-summary");
+const valueListEl = $("#value-list");
 const folderEl = $("#folder");
 const pdfSummaryEl = $("#pdf-summary");
 const scanEl = $("#scan");
@@ -67,6 +79,11 @@ const state = {
   pdfs: [],
   pickedParameters: [],
   pickedDiagnostic: "",
+  pickedKind: null,
+  kinds: {},
+  choiceValues: {},
+  selectedValues: new Set(),
+  choiceToken: 0,
   pickToken: 0,
   scanning: false,
   cancelRequested: false,
@@ -133,6 +150,7 @@ async function showPick(api, guid, shiftKey) {
     typeEl.textContent = dash(row.type);
     floorEl.textContent = dash(row.floor);
     state.pickedParameters = parametersFromInfo(info);
+    state.pickedKind = row.type || null;
     state.pickedDiagnostic = "";
     if (!state.pickedParameters.length && state.backend) {
       try {
@@ -157,6 +175,7 @@ async function showPick(api, guid, shiftKey) {
     state.pickedParameters = [];
   }
   renderParameters();
+  if (state.parameter) renderScope();
   await renderObjectLinks();
 }
 
@@ -212,6 +231,9 @@ async function chooseParameter(parameter) {
     const count = Object.keys(state.values).length;
     valuesSummaryEl.textContent = `${plural(count, "värde", "värden")} i modellen för ${parameter.pset} › ${parameter.property}.`;
     pdfStepEl.hidden = count === 0;
+    await loadKinds();
+    renderScope();
+    refreshValueChoice();
     if (count > 0) await loadFolders();
   } catch (error) {
     console.error("valuesFor", error);
@@ -221,6 +243,120 @@ async function chooseParameter(parameter) {
 }
 
 /* ---------- 2. PDFs and scan ---------- */
+
+function pickedValue() {
+  return state.pickedParameters.find((item) => item.key === state.parameter?.key)?.value;
+}
+
+async function loadKinds() {
+  try {
+    state.kinds = await state.backend.listKinds();
+  } catch (error) {
+    console.error("listKinds", error);
+    state.kinds = {};
+  }
+  const names = Object.keys(state.kinds).sort(naturalCompare);
+  kindEl.replaceChildren(
+    ...names.map((name) => el("option", { value: name, textContent: `${name} (${state.kinds[name]})` })),
+  );
+  scopeKindEl.disabled = names.length === 0;
+  followPickedKind();
+}
+
+function followPickedKind() {
+  if (!scopeKindEl.checked && state.pickedKind && state.kinds[state.pickedKind] != null) {
+    kindEl.value = state.pickedKind;
+  }
+}
+
+/** Follows the clicked object. An object without the parameter can't search its own value. */
+function renderScope() {
+  const value = pickedValue();
+  scopeOneEl.disabled = value == null;
+  scopeOneLabelEl.textContent = value == null ? "Objektet saknar parametern" : `Bara ${value}`;
+  scopeAllLabelEl.textContent = `Alla ${plural(Object.keys(state.values).length, "värde", "värden")} i modellen`;
+  followPickedKind();
+  if (value == null && scopeOneEl.checked) {
+    scopeAllEl.checked = true;
+    refreshValueChoice();
+  }
+}
+
+async function refreshValueChoice() {
+  const token = ++state.choiceToken;
+  state.selectedValues = new Set();
+  valueListEl.replaceChildren();
+  updateScanButton();
+  if (scopeOneEl.checked) {
+    valueChoiceEl.hidden = true;
+    return;
+  }
+  valueChoiceEl.hidden = false;
+  valueSummaryEl.textContent = "Hämtar värden…";
+  let values = state.values;
+  if (scopeKindEl.checked) {
+    try {
+      values = await state.backend.valuesForKind(state.parameter, kindEl.value, state.kinds[kindEl.value]);
+    } catch (error) {
+      if (token !== state.choiceToken) return;
+      console.error("valuesForKind", error);
+      valueSummaryEl.textContent = `Kunde inte hämta värden: ${messageOf(error)}`;
+      return;
+    }
+    if (token !== state.choiceToken) return;
+  }
+  state.choiceValues = values;
+  state.selectedValues = new Set(Object.keys(values));
+  renderValueList();
+}
+
+function renderValueList() {
+  const names = Object.keys(state.choiceValues).sort(naturalCompare);
+  valueListEl.replaceChildren(
+    ...names.map((name) => {
+      const input = el("input", { type: "checkbox", checked: state.selectedValues.has(name) });
+      input.addEventListener("change", () => {
+        if (input.checked) state.selectedValues.add(name);
+        else state.selectedValues.delete(name);
+        updateValueSummary();
+      });
+      return el(
+        "label",
+        { className: "option compact" },
+        input,
+        el(
+          "span",
+          { className: "option-text" },
+          el("b", { textContent: name }),
+          el("small", { textContent: plural(state.choiceValues[name], "objekt", "objekt") }),
+        ),
+      );
+    }),
+  );
+  updateValueSummary();
+}
+
+function updateValueSummary() {
+  const total = Object.keys(state.choiceValues).length;
+  valueSummaryEl.textContent = total
+    ? `${state.selectedValues.size} av ${plural(total, "värde", "värden")} valda`
+    : "Inga objekt av typen har parametern.";
+  updateScanButton();
+}
+
+function setAllValues(selected) {
+  state.selectedValues = new Set(selected ? Object.keys(state.choiceValues) : []);
+  renderValueList();
+}
+
+function valuesToSearch() {
+  return scopeOneEl.checked ? [pickedValue()] : [...state.selectedValues];
+}
+
+function updateScanButton() {
+  const hasValues = scopeOneEl.checked ? pickedValue() != null : state.selectedValues.size > 0;
+  scanEl.disabled = state.scanning || state.pdfs.length === 0 || !hasValues;
+}
 
 async function loadFolders() {
   if (folderEl.options.length) return loadPdfs();
@@ -242,7 +378,7 @@ async function loadPdfs() {
     state.pdfs = await state.backend.listPdfs(folderEl.value);
     const bytes = state.pdfs.reduce((sum, doc) => sum + (doc.filesize || 0), 0);
     pdfSummaryEl.textContent = `${plural(state.pdfs.length, "PDF", "PDF:er")}, ${formatBytes(bytes)} totalt.`;
-    scanEl.disabled = state.pdfs.length === 0 || state.scanning;
+    updateScanButton();
   } catch (error) {
     console.error("listPdfs", error);
     state.pdfs = [];
@@ -274,7 +410,7 @@ async function runScan() {
   setParameterLocked(true);
 
   const docs = [...state.pdfs];
-  const result = await scanDocuments(state.backend, docs, Object.keys(state.values), {
+  const result = await scanDocuments(state.backend, docs, valuesToSearch(), {
     isCancelled: () => state.cancelRequested,
     onProgress(done, total, doc) {
       progressEl.max = total;
@@ -284,7 +420,7 @@ async function runScan() {
   });
 
   state.scanning = false;
-  scanEl.disabled = false;
+  updateScanButton();
   folderEl.disabled = false;
   cancelEl.hidden = true;
   progressEl.hidden = true;
@@ -297,6 +433,10 @@ function setParameterLocked(locked) {
   for (const input of parameterListEl.querySelectorAll("input")) {
     input.disabled = locked || input.dataset.selectable !== "true";
   }
+  scopeKindEl.disabled = locked || Object.keys(state.kinds).length === 0;
+  scopeAllEl.disabled = locked;
+  kindEl.disabled = locked;
+  scopeOneEl.disabled = locked || pickedValue() == null;
 }
 
 /* ---------- 3. Review and save ---------- */
@@ -316,10 +456,15 @@ function renderReview(result, total) {
   reviewListEl.replaceChildren();
   reviewNotesEl.replaceChildren();
 
-  const hits = [...result.hits].sort(
-    (a, b) => a.value.localeCompare(b.value, "sv") || a.doc.filename.localeCompare(b.doc.filename, "sv"),
-  );
+  const hits = sortHits(result.hits);
+  let groupInputs = null;
+  let currentValue = null;
   for (const hit of hits) {
+    if (hit.value !== currentValue) {
+      currentValue = hit.value;
+      groupInputs = [];
+      reviewListEl.append(groupHead(hit.value, hits.filter((item) => item.value === hit.value).length, groupInputs));
+    }
     const linkable = isLinkableValue(hit.value);
     const input = el("input", { type: "checkbox", checked: linkable });
     const status = el("small", { className: "row-status" });
@@ -330,8 +475,9 @@ function renderReview(result, total) {
       el(
         "span",
         { className: "option-text" },
-        el("b", { textContent: `${hit.value} → ${hit.doc.filename}` }),
+        el("b", { textContent: hit.doc.filename }),
         el("small", { textContent: `Sida ${hit.page}: ${hit.snippet}` }),
+        filenameHasValue(hit) ? el("small", { className: "tag", textContent: "Värdet finns i filnamnet" }) : "",
         linkable ? "" : el("small", { className: "warn", textContent: "Kort värde, kontrollera innan du sparar." }),
         status,
       ),
@@ -340,8 +486,10 @@ function renderReview(result, total) {
     row.input = input;
     row.status = status;
     input.addEventListener("change", updateSaveButton);
+    groupInputs.push(input);
     reviewListEl.append(row);
   }
+  for (const toggle of reviewListEl.querySelectorAll(".group-head input")) toggle.sync();
 
   const scanned = total - result.failed.length - result.skipped.length;
   const prefix = result.cancelled ? "Sökningen avbröts. " : "";
@@ -370,11 +518,33 @@ function renderReview(result, total) {
   updateSaveButton();
 }
 
+/** One heading per value, with a checkbox that ticks that value's PDFs together. */
+function groupHead(value, count, inputs) {
+  const toggle = el("input", { type: "checkbox" });
+  toggle.sync = () => {
+    const ticked = inputs.filter((input) => input.checked).length;
+    toggle.checked = ticked === inputs.length;
+    toggle.indeterminate = ticked > 0 && ticked < inputs.length;
+  };
+  toggle.addEventListener("change", () => {
+    for (const input of inputs) input.checked = toggle.checked;
+    updateSaveButton();
+  });
+  return el(
+    "label",
+    { className: "group-head" },
+    toggle,
+    el("b", { textContent: value }),
+    el("small", { textContent: plural(count, "PDF", "PDF:er") }),
+  );
+}
+
 function reviewRows() {
-  return [...reviewListEl.children];
+  return [...reviewListEl.querySelectorAll(".option")];
 }
 
 function updateSaveButton() {
+  for (const toggle of reviewListEl.querySelectorAll(".group-head input")) toggle.sync();
   const count = reviewRows().filter((row) => row.input.checked).length;
   saveEl.disabled = count === 0 || state.saving;
   saveEl.textContent = count === 1 ? "Spara 1 länk" : `Spara ${count} länkar`;
@@ -511,6 +681,15 @@ function loadWidgetApi() {
 }
 
 folderEl.addEventListener("change", loadPdfs);
+scopeOneEl.addEventListener("change", refreshValueChoice);
+scopeKindEl.addEventListener("change", refreshValueChoice);
+scopeAllEl.addEventListener("change", refreshValueChoice);
+kindEl.addEventListener("change", () => {
+  scopeKindEl.checked = true;
+  refreshValueChoice();
+});
+$("#values-all").addEventListener("click", () => setAllValues(true));
+$("#values-none").addEventListener("click", () => setAllValues(false));
 scanEl.addEventListener("click", requestScan);
 scanConfirmYesEl.addEventListener("click", runScan);
 saveEl.addEventListener("click", saveSelected);

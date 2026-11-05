@@ -209,6 +209,84 @@ p.warn { color: #9a5b00; }
 .option-text small.row-status.exists { color: #3d4c5c; }
 .option-text small.row-status.failed { color: #9b1c1c; }
 
+.scope {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.scope-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.scope-option input { flex: none; margin: 0; }
+
+.scope-kind {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.scope-kind select { flex: 1 1 140px; padding: 3px 6px; font-size: 13px; }
+
+.value-choice {
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid #e6edf2;
+  border-radius: 8px;
+}
+
+.value-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.value-actions { display: flex; flex: none; gap: 4px; }
+
+#value-list { max-height: 220px; }
+
+.option.compact { padding: 4px 0; }
+
+.option.compact .option-text {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #eef3f6;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.group-head input { flex: none; margin: 0; }
+
+.group-head b { font-weight: 600; overflow-wrap: anywhere; }
+
+.group-head small { color: #5c6b7a; font-size: 12px; }
+
+.group-head + .option { border-top: 0; }
+
+.option-text small.tag { color: #0b6e4f; }
+
 .field {
   display: flex;
   align-items: center;

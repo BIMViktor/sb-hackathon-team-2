@@ -42,6 +42,33 @@
 
       <section id="pdf-step" class="card step" hidden>
         <h2>2. PDF:er</h2>
+        <div class="scope">
+          <label class="scope-option">
+            <input id="scope-one" type="radio" name="scope" checked />
+            <span id="scope-one-label">Bara objektets värde</span>
+          </label>
+          <div class="scope-kind">
+            <label class="scope-option">
+              <input id="scope-kind" type="radio" name="scope" />
+              <span>Alla objekt av typen</span>
+            </label>
+            <select id="kind" aria-label="Objekttyp"></select>
+          </div>
+          <label class="scope-option">
+            <input id="scope-all" type="radio" name="scope" />
+            <span id="scope-all-label">Alla värden i modellen</span>
+          </label>
+        </div>
+        <div id="value-choice" class="value-choice" hidden>
+          <div class="value-head">
+            <span id="value-summary" class="note"></span>
+            <span class="value-actions">
+              <button id="values-all" type="button" class="small">Alla</button>
+              <button id="values-none" type="button" class="small">Inga</button>
+            </span>
+          </div>
+          <div id="value-list" class="options"></div>
+        </div>
         <label class="field">
           <span>Mapp</span>
           <select id="folder"></select>
