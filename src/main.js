@@ -410,7 +410,8 @@ async function runScan() {
   setParameterLocked(true);
 
   const docs = [...state.pdfs];
-  const result = await scanDocuments(state.backend, docs, valuesToSearch(), {
+  const values = valuesToSearch();
+  const result = await scanDocuments(state.backend, docs, values, {
     isCancelled: () => state.cancelRequested,
     onProgress(done, total, doc) {
       progressEl.max = total;
@@ -426,7 +427,7 @@ async function runScan() {
   progressEl.hidden = true;
   progressTextEl.hidden = true;
   setParameterLocked(false);
-  renderReview(result, docs.length);
+  renderReview(result, docs.length, values);
 }
 
 function setParameterLocked(locked) {
@@ -450,17 +451,31 @@ function noteList(title, items) {
   );
 }
 
-function renderReview(result, total) {
+function renderReview(result, total, values) {
   reviewStepEl.hidden = false;
   saveSummaryEl.hidden = true;
   reviewListEl.replaceChildren();
   reviewNotesEl.replaceChildren();
 
   const hits = sortHits(result.hits);
+  const scanned = total - result.failed.length - result.skipped.length;
+  // A cancelled search, or one that read no PDF, can't say that a value has no PDF.
+  const conclusive = !result.cancelled && scanned > 0;
+  const found = new Set(hits.map((hit) => hit.value));
+  const missing = conclusive ? values.filter((value) => !found.has(value)).sort(naturalCompare) : [];
+  let nextMissing = 0;
+  const appendMissingBefore = (value) => {
+    while (nextMissing < missing.length && (value == null || naturalCompare(missing[nextMissing], value) < 0)) {
+      reviewListEl.append(missingRow(missing[nextMissing]));
+      nextMissing += 1;
+    }
+  };
+
   let groupInputs = null;
   let currentValue = null;
   for (const hit of hits) {
     if (hit.value !== currentValue) {
+      appendMissingBefore(hit.value);
       currentValue = hit.value;
       groupInputs = [];
       reviewListEl.append(groupHead(hit.value, hits.filter((item) => item.value === hit.value).length, groupInputs));
@@ -489,13 +504,15 @@ function renderReview(result, total) {
     groupInputs.push(input);
     reviewListEl.append(row);
   }
+  appendMissingBefore(null);
   for (const toggle of reviewListEl.querySelectorAll(".group-head input")) toggle.sync();
 
-  const scanned = total - result.failed.length - result.skipped.length;
   const prefix = result.cancelled ? "Sökningen avbröts. " : "";
-  reviewSummaryEl.textContent = hits.length
-    ? `${prefix}${plural(hits.length, "träff", "träffar")}. Bocka av de som inte stämmer.`
-    : `${prefix}Inga träffar.`;
+  const hitText = hits.length
+    ? `${plural(hits.length, "träff", "träffar")}. Bocka av de som inte stämmer.`
+    : "Inga träffar.";
+  const missingText = missing.length ? ` ${plural(missing.length, "värde", "värden")} utan PDF.` : "";
+  reviewSummaryEl.textContent = `${prefix}${hitText}${missingText}`;
 
   if (!result.cancelled && total > 0 && scanned === 0 && result.failed.length) {
     reviewNotesEl.append(
@@ -516,6 +533,18 @@ function renderReview(result, total) {
     );
   }
   updateSaveButton();
+}
+
+/** Same row as a value heading, with a red cross instead of a checkbox. */
+function missingRow(value) {
+  const count = state.choiceValues[value];
+  return el(
+    "div",
+    { className: "group-head missing" },
+    el("span", { className: "cross", textContent: "✕", ariaHidden: "true" }),
+    el("b", { textContent: value }),
+    el("small", { textContent: count ? `Ingen PDF hittades · ${plural(count, "objekt", "objekt")}` : "Ingen PDF hittades" }),
+  );
 }
 
 /** One heading per value, with a checkbox that ticks that value's PDFs together. */

@@ -285,6 +285,23 @@ p.warn { color: #9a5b00; }
 
 .group-head + .option { border-top: 0; }
 
+.group-head.missing {
+  position: static;
+  margin-top: 2px;
+  background: #fde8e8;
+  cursor: default;
+}
+
+.group-head.missing .cross {
+  flex: none;
+  width: 13px;
+  color: #c81e1e;
+  font-weight: 700;
+  text-align: center;
+}
+
+.group-head.missing small { color: #9b1c1c; }
+
 .option-text small.tag { color: #0b6e4f; }
 
 .field {
@@ -398,3 +415,90 @@ button.link-name {
 }
 
 button.link-name:hover { background: none; }
+
+/* ---------- Colourful theme ---------- */
+
+:root {
+  --violet: #6d28d9;
+  --pink: #db2777;
+  --blue: #0369a1;
+  --orange: #c2410c;
+  --teal: #0f766e;
+  background: #f5f0ff;
+}
+
+.frame {
+  padding-top: 0;
+  background: linear-gradient(180deg, #f5f0ff 0%, #fff1f7 55%, #fff7ed 100%);
+}
+
+header {
+  margin: 0 -16px 16px;
+  padding: 16px;
+  background: linear-gradient(120deg, var(--violet) 0%, var(--pink) 65%, #ea580c 100%);
+  color: #fff;
+}
+
+.kicker { color: #fff; opacity: 0.9; }
+
+.lead {
+  color: var(--violet);
+  font-weight: 600;
+}
+
+.status,
+.status[data-mode="mock"],
+.status[data-mode="live"] {
+  background: #fff;
+  color: var(--violet);
+}
+
+.status[data-mode="error"] { background: #fff; color: #b91c1c; }
+
+.card {
+  border-top: 4px solid var(--violet);
+  box-shadow: 0 4px 14px rgba(109, 40, 217, 0.1);
+}
+
+#parameter-step { border-top-color: var(--pink); }
+#parameter-step h2 { color: var(--pink); }
+#pdf-step { border-top-color: var(--blue); }
+#pdf-step h2 { color: var(--blue); }
+#review-step { border-top-color: var(--orange); }
+#review-step h2 { color: var(--orange); }
+
+input[type="radio"],
+input[type="checkbox"],
+progress { accent-color: var(--violet); }
+
+button:hover { background: #f5f0ff; }
+
+button.on {
+  border-color: var(--violet);
+  background: var(--violet);
+  color: #fff;
+}
+
+button:focus-visible { outline-color: var(--pink); }
+
+button.primary,
+button.primary:hover:not(:disabled) {
+  border-color: transparent;
+  background: linear-gradient(120deg, var(--violet), var(--pink));
+  color: #fff;
+}
+
+button.primary:hover:not(:disabled) { filter: brightness(1.1); }
+
+button.link-name,
+button.link-name:hover { color: var(--violet); }
+
+.value-choice { border-color: #bae6fd; background: #f0f9ff; }
+
+.group-head { background: #ede9fe; }
+.group-head b { color: var(--violet); }
+
+.option-text small.tag { color: var(--teal); font-weight: 600; }
+.option-text small.row-status.linked { color: var(--teal); }
+
+.confirm { background: #ffedd5; }

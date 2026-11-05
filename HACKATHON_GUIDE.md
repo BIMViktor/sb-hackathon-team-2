@@ -108,7 +108,9 @@ Visa resultatet i panelen. Logga fel med log(). Behåll mock-läget.
 
 Widgeten länkar projektets PDF:er till ett parametervärde. Länken är en vanlig StreamBIM-bilaga på värdet, till exempel `BIP › TypeID = FO03`, och gäller alla objekt med det värdet.
 
-**Status:** testat i mock-läge på localhost. Live-delen är inte körd mot StreamBIM ännu. Den största öppna frågan är om widgeten får läsa PDF-filerna från StreamBIM, eftersom det kan stoppas av CORS.
+**Status:** testat live i projekt 19513 via Localhost-widgeten: parametrar, värden per objekttyp, PDF-lista och textsökning fungerar. Att spara en länk är bara testat i mock-läge. Rader med rött kryss är också bara testade i mock-läge.
+
+**Localhost-widgeten i Chrome:** Chrome kan blockera panelen eftersom en offentlig sida laddar localhost. Den färdiga https-adressen ska inte påverkas.
 
 Widgeten använder tre anrop utanför listan i prompten ovan: `client.api.makeApiRequest`, `client.api.valuesForObjectProperty` och `client.api.getBuildingId`. Sökningen laddar ner en PDF i taget med paus och sparar texten i webbläsaren.
 
