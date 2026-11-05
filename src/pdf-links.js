@@ -359,6 +359,15 @@ function liveBackend(api) {
     }
   }
 
+  async function listAllDocuments(base, filters) {
+    const rows = [];
+    for (let skip = 0; ; skip += PAGE_SIZE) {
+      const { data } = await request(`${base}/v2/documents?${filters}page[limit]=${PAGE_SIZE}&page[skip]=${skip}`);
+      rows.push(...data);
+      if (data.length < PAGE_SIZE) return rows;
+    }
+  }
+
   const origin = () => window.location.ancestorOrigins?.[0] || "https://app.streambim.com";
 
   async function microtoken(base) {
@@ -384,26 +393,31 @@ function liveBackend(api) {
         .map((folder) => ({ id: folder.id, name: folder.attributes.name }))
         .sort((a, b) => a.name.localeCompare(b.name, "sv"));
     },
+    /**
+     * Server-side filters first, because they need fewer requests. The filtered call failed in
+     * project 19513 while the docs' sweep shows the plain list working, so fall back to paging
+     * everything and filtering here. The checks below run either way.
+     */
     async listPdfs(folderId) {
       const { base } = await context();
-      const docs = [];
-      for (let skip = 0; ; skip += PAGE_SIZE) {
-        const folder = folderId ? `&filter[folderId]=${folderId}` : "";
-        const { data } = await request(
-          `${base}/v2/documents?filter[fileExtensions]=pdf${folder}&page[limit]=${PAGE_SIZE}&page[skip]=${skip}`,
-        );
-        for (const doc of data) {
-          if (doc.attributes["is-deleted"]) continue;
-          docs.push({
-            id: doc.id,
-            filename: doc.attributes.filename,
-            filesize: doc.attributes.filesize,
-            revision: doc.attributes.revision,
-            folderId: doc.relationships?.parent?.data?.id,
-          });
-        }
-        if (data.length < PAGE_SIZE) return docs;
+      const folder = folderId ? `&filter[folderId]=${folderId}` : "";
+      let rows;
+      try {
+        rows = await listAllDocuments(base, `filter[fileExtensions]=pdf${folder}&`);
+      } catch (error) {
+        console.warn("Filtered document list failed, listing all documents", error);
+        rows = await listAllDocuments(base, "");
       }
+      return rows
+        .filter((doc) => !doc.attributes["is-deleted"] && /\.pdf$/i.test(doc.attributes.filename || ""))
+        .filter((doc) => !folderId || doc.relationships?.parent?.data?.id === folderId)
+        .map((doc) => ({
+          id: doc.id,
+          filename: doc.attributes.filename,
+          filesize: doc.attributes.filesize,
+          revision: doc.attributes.revision,
+          folderId: doc.relationships?.parent?.data?.id,
+        }));
     },
     /**
      * NOT VERIFIED LIVE. makeApiRequest returns a string, which corrupts binary, so this has
