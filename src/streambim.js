@@ -61,7 +61,19 @@ export async function connectWidget(handlers = {}) {
   return connectMock(handlers);
 }
 
+/**
+ * connectToParent only trusts the origin in document.referrer. An https page sends no referrer
+ * to an http page, so the Localhost widget gets none, and the handshake waits until it times out.
+ * Fill it in from the ancestor origin. The deployed https widget has a referrer and skips this.
+ */
+function ensureParentOriginForHelper() {
+  if (document.referrer) return;
+  const origin = window.location.ancestorOrigins?.[0] || "https://app.streambim.com";
+  Object.defineProperty(document, "referrer", { value: origin, configurable: true });
+}
+
 function connectLive(handlers) {
+  ensureParentOriginForHelper();
   return new Promise((resolve) => {
     let settled = false;
     const finish = (value) => {
