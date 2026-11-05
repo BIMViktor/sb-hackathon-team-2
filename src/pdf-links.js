@@ -53,17 +53,35 @@ export function parametersFromInfo(info) {
     }
   }
 
+  // Real records: { label: "BIP", content: { properties: [{ key, value, valueType }] } }.
   const groups = Array.isArray(info && info.groups) ? info.groups : [];
   for (const group of groups) {
     const pset = String((group && group.label) || "").replace(/:\s*$/, "").trim();
-    for (const [property, raw] of Object.entries((group && group.values) || {})) {
-      const match = /^(.*) : (\w+)$/.exec(String(raw));
-      if (match) add(pset, property, match[1], match[2] === "text" ? "str" : match[2]);
-      else add(pset, property, raw);
+    const rows = group && group.content && Array.isArray(group.content.properties) ? group.content.properties : [];
+    for (const row of rows) {
+      if (row) add(pset, row.key, row.value, normalizeValueType(row.valueType));
     }
   }
 
   return [...found.values()].sort((a, b) => a.key.localeCompare(b.key, "sv"));
+}
+
+function normalizeValueType(valueType) {
+  const type = String(valueType || "str").toLowerCase();
+  return ["str", "string", "text", "varchar"].includes(type) ? "str" : type;
+}
+
+/** What the record looks like, for the panel when no parameters were found. No values. */
+export function describeInfoShape(info) {
+  const groups = Array.isArray(info && info.groups) ? info.groups : [];
+  return JSON.stringify({
+    keys: Object.keys(info || {}),
+    groups: groups.slice(0, 8).map((group) => ({
+      label: group && group.label,
+      keys: Object.keys(group || {}),
+      contentKeys: Object.keys((group && group.content) || {}),
+    })),
+  });
 }
 
 function normalize(text) {
@@ -260,6 +278,9 @@ function mockBackend() {
   const fileOf = (doc) => `${import.meta.env.BASE_URL}mock-pdfs/${encodeURIComponent(doc.filename)}`;
 
   return {
+    async objectRecord() {
+      return null;
+    },
     async valuesFor(parameter) {
       const counts = {};
       for (const object of objects) {
@@ -346,6 +367,12 @@ function liveBackend(api) {
   }
 
   return {
+    /** getObjectInfo is the viewer's copy. The REST record has the property sets. */
+    async objectRecord(guid) {
+      const { base, buildingId } = await context();
+      const { data } = await request(`${base}/v2/ifc-objects/${encodeURIComponent(guid)}?building=${buildingId}`);
+      return data.attributes;
+    },
     async valuesFor(parameter) {
       return api.valuesForObjectProperty(parameter.key);
     },

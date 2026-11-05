@@ -6,6 +6,7 @@
 import { objects } from "./mock-data.js";
 import {
   createLinkBackend,
+  describeInfoShape,
   formatBytes,
   isLinkableValue,
   MAX_PDF_BYTES,
@@ -65,6 +66,7 @@ const state = {
   values: {},
   pdfs: [],
   pickedParameters: [],
+  pickedDiagnostic: "",
   pickToken: 0,
   scanning: false,
   cancelRequested: false,
@@ -131,6 +133,21 @@ async function showPick(api, guid, shiftKey) {
     typeEl.textContent = dash(row.type);
     floorEl.textContent = dash(row.floor);
     state.pickedParameters = parametersFromInfo(info);
+    state.pickedDiagnostic = "";
+    if (!state.pickedParameters.length && state.backend) {
+      try {
+        const record = await state.backend.objectRecord(guid);
+        if (token !== state.pickToken) return;
+        state.pickedParameters = parametersFromInfo(record);
+        if (!state.pickedParameters.length) {
+          state.pickedDiagnostic = `viewer: ${describeInfoShape(info)} rest: ${describeInfoShape(record)}`;
+        }
+      } catch (error) {
+        if (token !== state.pickToken) return;
+        console.error("objectRecord", error);
+        state.pickedDiagnostic = `viewer: ${describeInfoShape(info)} rest-fel: ${messageOf(error)}`;
+      }
+    }
   } catch (error) {
     if (token !== state.pickToken) return;
     console.error("getObjectInfo", error);
@@ -150,6 +167,9 @@ function renderParameters() {
   if (!state.pickedParameters.length) {
     parameterHintEl.hidden = false;
     parameterHintEl.textContent = "Objektet har inga parametrar att välja. Klicka på ett annat objekt.";
+    if (state.pickedDiagnostic) {
+      parameterListEl.append(el("code", { className: "diagnostic", textContent: state.pickedDiagnostic }));
+    }
     return;
   }
   parameterHintEl.hidden = true;

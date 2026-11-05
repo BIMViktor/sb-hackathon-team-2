@@ -258,6 +258,14 @@ progress {
   overflow-wrap: anywhere;
 }
 
+.diagnostic {
+  display: block;
+  margin-top: 8px;
+  color: #5c6b7a;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
 .review-notes:empty { display: none; }
 
 .review-notes {
