@@ -96,10 +96,21 @@ Visa resultatet i panelen. Logga fel med log(). Behåll mock-läget.
 | Fil | Roll |
 | --- | --- |
 | `src/main.js` | Er app. Börja här. |
+| `src/pdf-links.js` | PDF-länkar: textsökning och bilagor, med live- och mock-backend. |
 | `src/style.css` | Utseende för den smala panelen. |
 | `src/streambim.js` | Live-koppling, mock och postMessage. |
-| `src/mock-data.js` | Fejkade våningar och objekt. |
+| `src/mock-data.js` | Fejkade våningar, objekt, mappar och dokument. |
 | `public/streambim-widget-api.min.js` | Officiellt widget-API. Ändra den inte. |
+| `public/pdfjs/` | pdf.js 6.3.289, kopierad från `pdfjs-dist`. Läser PDF-text. Inte ett npm-beroende. |
+| `public/mock-pdfs/` | Små PDF:er för mock-läget. |
+
+## PDF-länkar (team 2)
+
+Widgeten länkar projektets PDF:er till ett parametervärde. Länken är en vanlig StreamBIM-bilaga på värdet, till exempel `BIP › TypeID = FO03`, och gäller alla objekt med det värdet.
+
+**Status:** testat i mock-läge på localhost. Live-delen är inte körd mot StreamBIM ännu. Den största öppna frågan är om widgeten får läsa PDF-filerna från StreamBIM, eftersom det kan stoppas av CORS.
+
+Widgeten använder tre anrop utanför listan i prompten ovan: `client.api.makeApiRequest`, `client.api.valuesForObjectProperty` och `client.api.getBuildingId`. Sökningen laddar ner en PDF i taget med paus och sparar texten i webbläsaren.
 
 ## Demo-check
 

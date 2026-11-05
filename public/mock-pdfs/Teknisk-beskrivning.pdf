@@ -1,0 +1,57 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 121 >>
+stream
+BT /F1 12 Tf 60 780 Td (Teknisk beskrivning) Tj ET
+BT /F1 12 Tf 60 760 Td (Allmänna krav på material och utförande) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 86 >>
+stream
+BT /F1 12 Tf 60 780 Td (Fönster enligt typ FO03 monteras i linje med isolering.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 181 >>
+stream
+BT /F1 12 Tf 60 780 Td (Yttervägg YV01 utförs med putsbärare.) Tj ET
+BT /F1 12 Tf 60 760 Td (Innervägg V1 utförs i gips.) Tj ET
+BT /F1 12 Tf 60 740 Td (Ytterdörr, se GPPD-UT.) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000127 00000 n 
+0000000224 00000 n 
+0000000396 00000 n 
+0000000522 00000 n 
+0000000658 00000 n 
+0000000784 00000 n 
+0000001016 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+1142
+%%EOF

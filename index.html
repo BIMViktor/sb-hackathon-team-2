@@ -15,8 +15,8 @@
         <p id="status" class="status">Ansluter…</p>
       </header>
 
-      <p class="lead">Klicka på något i modellen.</p>
-      <p class="note">Namn, typ och våning visas här, och objektet markeras i vyn. Ändra src/main.js och src/style.css. Låt src/streambim.js vara. Inga nya paket. En push till main syns efter ungefär en minut.</p>
+      <p class="lead">Länka PDF:er till en parameter.</p>
+      <p class="note">Klicka på ett objekt och välj parameter. Widgeten söker värdena i PDF:ernas text, och du väljer vilka länkar som ska sparas.</p>
 
       <section class="card">
         <p id="empty">Inget valt ännu.</p>
@@ -24,12 +24,50 @@
           <p id="name" class="name">–</p>
           <p class="row"><span>Typ</span><b id="type">–</b></p>
           <p class="row"><span>Våning</span><b id="floor">–</b></p>
+          <div id="object-links" class="object-links" hidden></div>
         </div>
       </section>
 
       <section id="simulator" class="simulator" hidden>
         <p>Lokalt finns ingen modell. Klicka ett prov.</p>
         <div id="object-chips" class="chips"></div>
+      </section>
+
+      <section id="parameter-step" class="card step">
+        <h2>1. Parameter</h2>
+        <p id="parameter-hint" class="note">Klicka på ett objekt för att se dess parametrar.</p>
+        <div id="parameter-list" class="options"></div>
+        <p id="values-summary" class="note summary" hidden></p>
+      </section>
+
+      <section id="pdf-step" class="card step" hidden>
+        <h2>2. PDF:er</h2>
+        <label class="field">
+          <span>Mapp</span>
+          <select id="folder"></select>
+        </label>
+        <p id="pdf-summary" class="note summary"></p>
+        <div class="actions">
+          <button id="scan" type="button" class="primary">Sök i PDF:erna</button>
+          <button id="cancel" type="button" hidden>Avbryt</button>
+        </div>
+        <div id="scan-confirm" class="confirm" hidden>
+          <p id="scan-confirm-text"></p>
+          <button id="scan-confirm-yes" type="button" class="primary">Sök ändå</button>
+        </div>
+        <progress id="progress" hidden></progress>
+        <p id="progress-text" class="note" hidden></p>
+      </section>
+
+      <section id="review-step" class="card step" hidden>
+        <h2>3. Förslag</h2>
+        <p id="review-summary" class="note summary"></p>
+        <div id="review-list" class="options"></div>
+        <div id="review-notes" class="review-notes"></div>
+        <div class="actions">
+          <button id="save" type="button" class="primary">Spara länkar</button>
+        </div>
+        <p id="save-summary" class="note summary" hidden></p>
       </section>
     </div>
     <script type="module" src="/src/main.js"></script>
